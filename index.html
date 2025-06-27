@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login Web3 - MetaMask + NFT + Gated Content</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="relative min-h-screen bg-cover bg-center bg-no-repeat text-white" style="background-image: url(img/blockchain.jpg);">
+
+  <!-- Overlay Hitam Transparan -->
+  <div class="absolute inset-0 bg-black bg-opacity-60 z-0"></div>
+
+  <!-- Root React App -->
+  <div id="root" class="relative z-10 flex items-center justify-center min-h-screen px-4 w-full"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const TARGET_NFT_CONTRACT = "0xYourNFTContractAddressHere"; // Ganti dengan NFT Contract Asli
+
+    function Web3LoginApp() {
+      const [walletAddress, setWalletAddress] = useState('');
+      const [isConnected, setIsConnected] = useState(false);
+      const [hasNFT, setHasNFT] = useState(false);
+      const [error, setError] = useState('');
+      const [points, setPoints] = useState(0);
+
+      const connectWallet = async () => {
+        if (typeof window.ethereum !== 'undefined') {
+          try {
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            await provider.send('eth_requestAccounts', []);
+            const signer = provider.getSigner();
+            const address = await signer.getAddress();
+            setWalletAddress(address);
+            setIsConnected(true);
+            setError('');
+            setPoints(prev => prev + 10); // Tambah poin saat login
+            checkNFTBalance(address);
+          } catch (err) {
+            setError('User rejected the connection request.');
+          }
+        } else {
+          setError('MetaMask not found. Please install it first.');
+        }
+      };
+
+      const checkNFTBalance = async (address) => {
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const contract = new ethers.Contract(TARGET_NFT_CONTRACT, ["function balanceOf(address owner) view returns (uint256)"], provider);
+          const balance = await contract.balanceOf(address);
+          setHasNFT(balance.gt(0));
+        } catch (err) {
+          setError('Failed to verify NFT ownership.');
+        }
+      };
+
+      const logoutWallet = () => {
+        setWalletAddress('');
+        setIsConnected(false);
+        setHasNFT(false);
+      };
+
+      return (
+        <div className="bg-gray-800 bg-opacity-80 rounded-2xl p-8 max-w-md w-full text-center shadow-xl backdrop-blur-md">
+          {!isConnected ? (
+            <>
+              <h1 className="text-3xl font-bold mb-4">🔐 Login Web3</h1>
+              <p className="mb-6 text-gray-300">Connect your wallet to access exclusive content</p>
+              <button
+                onClick={connectWallet}
+                className="bg-indigo-600 hover:bg-indigo-700 transition px-6 py-3 rounded-xl text-lg font-semibold w-full"
+              >
+                Connect Wallet
+              </button>
+              {error && <p className="text-red-500 mt-4 text-sm">{error}</p>}
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-semibold mb-2">🎉 Welcome!</h1>
+              <p className="text-sm text-gray-400 mb-1">Wallet Address:</p>
+              <p className="text-green-400 font-mono mb-3">{walletAddress}</p>
+              <p className="text-yellow-300 text-sm mb-2">Reward Points: {points}</p>
+
+              {hasNFT ? (
+                <div className="bg-gray-700 p-4 rounded-lg mb-4">
+                  <p className="text-lg font-semibold text-green-300">✅ NFT Verified</p>
+                  <p className="text-sm text-gray-300 mt-1">Welcome to the gated content area 🎁</p>
+                </div>
+              ) : (
+                <div className="bg-gray-700 p-4 rounded-lg mb-4">
+                  <p className="text-lg font-semibold text-red-400">🚫 NFT Not Found</p>
+                  <p className="text-sm text-gray-300 mt-1">You need the correct NFT to access this content.</p>
+                </div>
+              )}
+
+              <button
+                onClick={logoutWallet}
+                className="bg-red-600 hover:bg-red-700 transition px-6 py-2 rounded-xl text-md font-medium"
+              >
+                Logout
+              </button>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.render(<Web3LoginApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>
